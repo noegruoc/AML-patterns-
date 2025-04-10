@@ -1,0 +1,47 @@
+import networkx as nx
+import pandas as pd
+
+# Fan-In: Many sources to a single target
+def detect_fan_in(df, min_sources=2):
+    grouped = df.groupby('target_id').source_id.nunique()
+    return grouped[grouped >= min_sources]
+
+# Fan-Out: One source to many targets
+def detect_fan_out(df, min_targets=2):
+    grouped = df.groupby('source_id').target_id.nunique()
+    return grouped[grouped >= min_targets]
+
+# Cycle Detection
+def detect_cycles(df, max_length=5):
+    G = nx.from_pandas_edgelist(df, 'source_id', 'target_id', create_using=nx.DiGraph())
+    return [cycle for cycle in nx.simple_cycles(G) if len(cycle) <= max_length]
+
+# Bipartite Detection (structure only)
+def detect_bipartite(df):
+    G = nx.Graph()
+    G.add_edges_from(df[['source_id', 'target_id']].values)
+    if nx.is_bipartite(G):
+        set1, set2 = nx.bipartite.sets(G)
+        return set1, set2
+    return None
+
+# Stacked Bipartite: A → B → C
+def detect_stacked_bipartite(df):
+    merged = df.merge(df, left_on='target_id', right_on='source_id', suffixes=('_1', '_2'))
+    return merged[['source_id_1', 'target_id_1', 'target_id_2']]
+
+# Scatter-Gather: A → many → A
+def detect_scatter_gather(df):
+    scatter = df[df.duplicated(['source_id'], keep=False)]
+    candidates = df[
+        df['source_id'].isin(scatter['target_id']) &
+        df['target_id'].isin(scatter['source_id'])
+    ]
+    return candidates
+
+# Gather-Scatter: many → A → many
+def detect_gather_scatter(df):
+    gather = df[df.duplicated(['target_id'], keep=False)]
+    centers = gather['target_id'].value_counts()
+    scatter = df[df['source_id'].isin(centers.index)]
+    return scatter
