@@ -15,8 +15,11 @@ def sources_with_at_least_n_targets(df, n, source_col='source', target_col='targ
     # Group sources by their target sets
     from collections import defaultdict
     target_to_sources = defaultdict(list)
+    
     for source, target_set in filtered.items():
         target_to_sources[target_set].append(source)
     
-    # Only keep groups with more than one source
-    return [sources for sources in target_to_sources.values() if len(sources) > 1]
+    # Only keep groups where more than one source shares the same target set
+    result = [sources for sources in target_to_sources.values() if len(sources) > 1]
+
+    return result
