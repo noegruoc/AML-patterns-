@@ -1,0 +1,22 @@
+def sources_with_same_n_targets(df, n, source_col='source', target_col='target'):
+    """
+    Returns a list of source groups that are linked to the same set of n unique targets.
+
+    :param df: DataFrame with source and target columns
+    :param n: Number of unique targets
+    :return: List of lists, where each sublist is a group of sources sharing the same n targets
+    """
+    # Get unique targets per source as sets
+    grouped = df.groupby(source_col)[target_col].apply(lambda x: frozenset(x.unique()))
+    
+    # Filter only those with exactly n unique targets
+    filtered = grouped[grouped.apply(len) == n]
+    
+    # Group sources by their target sets
+    from collections import defaultdict
+    target_to_sources = defaultdict(list)
+    for source, target_set in filtered.items():
+        target_to_sources[target_set].append(source)
+    
+    # Only keep groups with more than one source
+    return [sources for sources in target_to_sources.values() if len(sources) > 1]
